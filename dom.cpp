@@ -10,7 +10,13 @@ struct ElementData {
     AttrMap attributes;
 };
 
-typedef std::variant<std::string, ElementData> NodeType;
+struct DocumentType {
+    std::string name;
+    std::string publicId;
+    std::string systemId;
+};
+
+typedef std::variant<std::string, ElementData, DocumentType> NodeType;
 
 struct Node {
     NodeType node_type;
@@ -33,6 +39,12 @@ Node createElementNode(std::string name, AttrMap attrs,
     };
 }
 
+Node createDocumentTypeNode(std::string name, std::string publicId = "",
+                            std::string systemId = "") {
+    DocumentType doctype_data = {.name = name};
+    return {.node_type = doctype_data, .children = {}};
+}
+
 void printIndent(size_t depth, std::string indent = "  ") {
     std::cout << '\n';
     for (size_t i = 0; i < depth; i++)
@@ -42,6 +54,12 @@ void printIndent(size_t depth, std::string indent = "  ") {
 void printTree(const Node &root, size_t depth = 0) {
     if (depth > 0)
         printIndent(depth);
+
+    if (std::holds_alternative<DocumentType>(root.node_type)) {
+        DocumentType doctype = std::get<DocumentType>(root.node_type);
+        std::cout << "<!DOCTYPE " << doctype.name << ">\n";
+        return;
+    }
 
     if (std::holds_alternative<std::string>(root.node_type)) {
         std::cout << "\"" << std::get<std::string>(root.node_type) << "\"";
@@ -59,23 +77,29 @@ void printTree(const Node &root, size_t depth = 0) {
 
     if (root.children.size())
         printIndent(depth);
+
     std::cout << "</" << elem_data.tag_name << '>';
 }
 
 int main() {
-    Node elem{createElementNode(
-        "DIV", {},
-        {
-            createElementNode("P", {{"ID", "subtitle"}, {"CLASS", "pink"}}, {}),
-            createElementNode(
-                "P", {},
-                {createTextNode("hello"),
-                 createElementNode("A", {{"HREF", "https://example.com"}},
-                                   {createTextNode("click me")}),
-                 createElementNode(
-                     "SPAN", {},
-                     {createTextNode("something's in the water")})}),
-            createElementNode("P", {}, {}),
-        })};
-    printTree(elem);
+    printTree(createDocumentTypeNode("html"));
+
+    Node root{createElementNode(
+        "HTML", {{"LANG", "EN"}},
+        {createElementNode(
+            "DIV", {},
+            {
+                createElementNode("P", {{"ID", "subtitle"}, {"CLASS", "pink"}},
+                                  {}),
+                createElementNode(
+                    "P", {},
+                    {createTextNode("hello"),
+                     createElementNode("A", {{"HREF", "https://example.com"}},
+                                       {createTextNode("click me")}),
+                     createElementNode(
+                         "SPAN", {},
+                         {createTextNode("something's in the water")})}),
+                createElementNode("P", {}, {}),
+            })})};
+    printTree(root);
 }
